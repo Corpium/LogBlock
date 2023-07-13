@@ -5,6 +5,7 @@ import de.diddiz.LogBlock.LogBlock;
 import de.diddiz.LogBlock.Logging;
 import de.diddiz.LogBlock.config.WorldConfig;
 import de.diddiz.LogBlock.util.BukkitUtils;
+import net.aerulion.erenos.event.ErenosBlockBreakEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -29,7 +30,7 @@ public class BlockBreakLogging extends LoggingListener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
+    public void onBlockBreak(ErenosBlockBreakEvent event) {
         if (isLogging(event.getBlock().getWorld(), Logging.BLOCKBREAK)) {
             WorldConfig wcfg = getWorldConfig(event.getBlock().getWorld());
             if (wcfg == null) {

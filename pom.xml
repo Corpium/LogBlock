@@ -77,6 +77,12 @@
             <version>5.1.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>net.aerulion</groupId>
+            <artifactId>erenos</artifactId>
+            <version>3.8.20</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
@@ -90,6 +96,11 @@
         <repository>
             <id>brokkonaut-repo</id>
             <url>https://www.iani.de/nexus/content/groups/public/</url>
+        </repository>
+        <!-- you need to add a <server> with id "github-packages" and username/password in .m2/settings.xml settings.servers -->
+        <repository>
+            <id>github-packages</id>
+            <url>https://maven.pkg.github.com/aerulion/erenos</url>
         </repository>
     </repositories>
     <profiles>

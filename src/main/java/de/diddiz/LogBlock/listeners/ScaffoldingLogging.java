@@ -7,13 +7,13 @@ import java.util.ArrayDeque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import net.aerulion.erenos.event.ErenosBlockBreakEvent;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 
@@ -61,7 +61,7 @@ public class ScaffoldingLogging extends LoggingListener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
+    public void onBlockBreak(ErenosBlockBreakEvent event) {
         Block block = event.getBlock();
         if (isLogging(block.getWorld(), Logging.SCAFFOLDING)) {
             cleanupScaffoldingBreakers();
