@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.Strictness;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -20,7 +21,7 @@ import java.util.UUID;
 public class UUIDFetcher {
 
     private static final String PROFILE_URL = "https://api.mojang.com/profiles/minecraft";
-    private static final Gson gson = new GsonBuilder().setLenient().create();
+    private static final Gson gson = new GsonBuilder().setStrictness(Strictness.LENIENT).create();
 
     public static Map<String, UUID> getUUIDs(List<String> names) throws Exception {
         Map<String, UUID> uuidMap = new HashMap<>();
