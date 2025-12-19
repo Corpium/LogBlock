@@ -566,8 +566,9 @@ public class BukkitUtils {
         }
 
         String simpleClassName = entity.getClass().getSimpleName();
-        if(simpleClassName.startsWith("Craft"))
+        if (simpleClassName.startsWith("Craft")) {
             return simpleClassName.substring(5);
+        }
 
         return simpleClassName;
     }
@@ -1053,5 +1054,15 @@ public class BukkitUtils {
         double f = Math.atan2(relativeZ, relativeX) * 180.0 / Math.PI - 90.0;
 
         return Math.abs(Utils.warpDegrees(f - yRotationDegree)) <= 90.0 ? Side.FRONT : Side.BACK;
+    }
+
+    public static BlockFace rotateClockwise(BlockFace direction) {
+        return switch (direction) {
+            case NORTH -> BlockFace.EAST;
+            case SOUTH -> BlockFace.WEST;
+            case WEST -> BlockFace.NORTH;
+            case EAST -> BlockFace.SOUTH;
+            default -> throw new IllegalArgumentException("direction must be cardinal");
+        };
     }
 }

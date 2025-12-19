@@ -3,17 +3,22 @@ package de.diddiz.LogBlock.listeners;
 import de.diddiz.LogBlock.Actor;
 import de.diddiz.LogBlock.LogBlock;
 import de.diddiz.LogBlock.Logging;
+import de.diddiz.LogBlock.util.BukkitUtils;
 import de.diddiz.LogBlock.util.Fraction;
 import de.diddiz.LogBlock.util.ItemStackAndAmount;
+import de.diddiz.LogBlock.util.PaperCompatibility;
+import de.diddiz.LogBlock.util.SelectableSlotContainerHelper;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Beehive;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DecoratedPot;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.data.type.ChiseledBookshelf;
+import org.bukkit.block.data.type.Shelf;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -30,6 +35,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShelfInventory;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BundleMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -452,17 +458,7 @@ public class ChestAccessLogging extends LoggingListener {
                 if (pos == null) {
                     return; // some plugins create this event without a clicked pos
                 }
-                double clickx = switch (blockData.getFacing()) {
-                    case NORTH -> 1 - pos.getX();
-                    case SOUTH -> pos.getX();
-                    case EAST -> 1 - pos.getZ();
-                    case WEST -> pos.getZ();
-                    default -> throw new IllegalArgumentException("Unexpected facing for chiseled bookshelf: " + blockData.getFacing());
-                };
-                int col = clickx < 0.375 ? 0 : (clickx < 0.6875 ? 1 : 2); // 6/16 ; 11/16
-                int row = pos.getY() >= 0.5 ? 0 : 1;
-                int slot = col + row * 3;
-
+                int slot = SelectableSlotContainerHelper.getHitSlot(blockData.getFacing(), pos, 2, 3);
                 ItemStack currentInSlot = bookshelf.getSnapshotInventory().getItem(slot);
                 if (blockData.isSlotOccupied(slot)) {
                     // not empty: always take
@@ -476,6 +472,86 @@ public class ChestAccessLogging extends LoggingListener {
                         ItemStack stack = mainHand.clone();
                         stack.setAmount(1);
                         consumer.queueChestAccess(Actor.actorFromEntity(player), clicked.getLocation(), clicked.getBlockData(), ItemStackAndAmount.fromStack(stack), false);
+                    }
+                }
+            }
+        } else if (Tag.WOODEN_SHELVES.isTagged(type) && clicked.getBlockData() instanceof Shelf blockData && event.getBlockFace() == blockData.getFacing() && clicked.getState() instanceof org.bukkit.block.Shelf shelf) {
+            Vector pos = event.getClickedPosition();
+            if (pos == null) {
+                return; // some plugins create this event without a clicked pos
+            }
+            int slot = SelectableSlotContainerHelper.getHitSlot(blockData.getFacing(), pos, 1, 3);
+            // player.sendMessage("Clicked slot: " + slot);
+            ItemStack currentInSlot = shelf.getSnapshotInventory().getItem(slot);
+            if (!blockData.isPowered()) {
+                // swap single slot
+                if (currentInSlot != null && currentInSlot.getType() != Material.AIR) {
+                    consumer.queueChestAccess(Actor.actorFromEntity(player), clicked.getLocation(), clicked.getBlockData(), ItemStackAndAmount.fromStack(currentInSlot), true);
+                }
+                ItemStack mainHand = player.getInventory().getItemInMainHand();
+                if (mainHand != null && mainHand.getType() != Material.AIR) {
+                    consumer.queueChestAccess(Actor.actorFromEntity(player), clicked.getLocation(), clicked.getBlockData(), ItemStackAndAmount.fromStack(mainHand), false);
+                }
+            } else {
+                // swap hotbar
+                // find neighbours - up to 3 blocks total, priorize right side (up to 2) then left side
+                // stop when not shelf, not powered or not connected to the current (to the right must have "sidechain.right" and vv
+                // stop after the block if not center or limit reached
+                // swap with hotbar from the right
+                BlockFace side = BukkitUtils.rotateClockwise(blockData.getFacing()).getOppositeFace();
+                // to the right
+                ArrayList<Block> blockChain = new ArrayList<>();
+                blockChain.add(clicked);
+                for (int i = 1; i < 3; i++) {
+                    Block neighbour = clicked.getRelative(side, i);
+                    if (!(neighbour.getBlockData() instanceof Shelf neighbourData) || !neighbourData.isPowered() || neighbourData.getFacing() != blockData.getFacing()) {
+                        break;
+                    }
+                    PaperCompatibility.SideChain sideChain = PaperCompatibility.getShelfSideChain(neighbourData);
+                    if (sideChain != PaperCompatibility.SideChain.CENTER && sideChain != PaperCompatibility.SideChain.RIGHT) {
+                        break;
+                    }
+                    blockChain.add(neighbour);
+                    if (sideChain != PaperCompatibility.SideChain.CENTER) {
+                        break;
+                    }
+                }
+                // to the left
+                side = side.getOppositeFace();
+                for (int i = 1; i < 3 && blockChain.size() < 3; i++) {
+                    Block neighbour = clicked.getRelative(side, i);
+                    if (!(neighbour.getBlockData() instanceof Shelf neighbourData) || !neighbourData.isPowered() || neighbourData.getFacing() != blockData.getFacing()) {
+                        break;
+                    }
+                    PaperCompatibility.SideChain sideChain = PaperCompatibility.getShelfSideChain(neighbourData);
+                    if (sideChain != PaperCompatibility.SideChain.CENTER && sideChain != PaperCompatibility.SideChain.LEFT) {
+                        break;
+                    }
+                    blockChain.add(0, neighbour);
+                    if (sideChain != PaperCompatibility.SideChain.CENTER) {
+                        break;
+                    }
+                }
+                int chainedCount = blockChain.size();
+                int startSlot = 9 - chainedCount * 3;
+                Inventory playerInventory = player.getInventory();
+                for (int i = 0; i < chainedCount; i++) {
+                    Block chainBlock = blockChain.get(i);
+                    ShelfInventory blockInventory = ((org.bukkit.block.Shelf) chainBlock.getState()).getSnapshotInventory();
+                    // player.sendMessage("Block " + chainBlock.getLocation().toVector());
+                    for (int slotInBlock = 0; slotInBlock < 3; slotInBlock++) {
+                        ItemStack blockItem = blockInventory.getItem(slotInBlock);
+                        if (blockItem != null && blockItem.getType() != Material.AIR) {
+                            // player.sendMessage("  Item -> Player: " + blockItem.getType());
+                            consumer.queueChestAccess(Actor.actorFromEntity(player), chainBlock.getLocation(), chainBlock.getBlockData(), ItemStackAndAmount.fromStack(blockItem), true);
+                        }
+                    }
+                    for (int slotInBlock = 0; slotInBlock < 3; slotInBlock++) {
+                        ItemStack playerInvItem = playerInventory.getItem(startSlot + slotInBlock + i * 3);
+                        if (playerInvItem != null && playerInvItem.getType() != Material.AIR) {
+                            // player.sendMessage("  Item -> Block: " + playerInvItem.getType());
+                            consumer.queueChestAccess(Actor.actorFromEntity(player), chainBlock.getLocation(), chainBlock.getBlockData(), ItemStackAndAmount.fromStack(playerInvItem), false);
+                        }
                     }
                 }
             }
