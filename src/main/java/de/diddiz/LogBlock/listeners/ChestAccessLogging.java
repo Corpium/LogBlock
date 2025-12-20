@@ -398,7 +398,7 @@ public class ChestAccessLogging extends LoggingListener {
                             }
                         } else {
                             // unable to log something we don't know
-                            consumer.getLogblock().getLogger().warning("Unknown inventory action by " + event.getWhoClicked().getName() + ": " + event.getAction() + " Slot: " + event.getSlot() + " Slot type: " + event.getSlotType());
+                            consumer.getLogblock().getLogger().warning("Unknown inventory action by " + event.getWhoClicked().getName() + ": " + event.getAction() + " Click type: " + event.getClick() + " Slot: " + event.getSlot() + " Slot type: " + event.getSlotType());
                         }
                         break;
                 }
